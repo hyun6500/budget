@@ -5,7 +5,7 @@ const CONFIG = {
   SHEET_ID: "1SO4e_4yNL-KPvMqNTK5h5d_Aq_ETb7ZKmFpk5lYiRY8",
 
   // Apps Script 웹앱 주소. [배포 > 배포 관리]의 복사 아이콘으로 가져오세요. /exec 로 끝납니다
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwpE7XSREyvp2ffAjfNekDDHZJdo61ZD0v_qxBioI7fFt0CMr0ZImsoWmOc6Ceudhj4/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxoV_iWS-EpyZdsoreNew1PeWNaJfBUAvxyTX7Pj_TpNcq_PY7w3rMI0-ShX01nWaPdmA/exec",
 
   // 시트 이름
   SHEET_NAME: "입력",
