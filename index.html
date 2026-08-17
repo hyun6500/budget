@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0E14">
+<title>주현 장부</title>
+<!-- 나눈 판 v2. 화면 뼈대만 여기 있고 나머지는 css/ 와 js/ 에 있습니다. -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header id="top">
+  <div class="brand">
+    <span class="eyebrow">주현 장부</span>
+    <h1 id="topTitle">이번 달</h1>
+  </div>
+  <div class="topact">
+    <button id="hushBtn" class="icobtn" title="금액 가리기">가림</button>
+    <button id="dayBtn" class="icobtn" title="낮 모드">낮</button>
+    <button id="lockBtn" class="icobtn" title="편집 잠금">잠김</button>
+    <button id="reloadBtn" class="icobtn" title="새로고침">갱신</button>
+  </div>
+</header>
+
+<nav id="tabstrip" aria-label="달 고르기"></nav>
+
+<main id="main">
+  <section id="p-month" class="page"></section>
+  <section id="p-ledger" class="page" hidden></section>
+  <section id="p-spend" class="page" hidden></section>
+  <section id="p-asset" class="page" hidden></section>
+  <section id="p-hall"  class="page" hidden></section>
+  <section id="p-add"   class="page" hidden></section>
+</main>
+
+<button id="fab" aria-label="기록 추가">+</button>
+
+<nav id="tabbar">
+  <button data-tab="month" class="on" data-ic="달력"><span>이번 달</span></button>
+  <button data-tab="ledger" data-ic="지갑"><span>원장</span></button>
+  <button data-tab="spend" data-ic="그래프"><span>소비</span></button>
+  <button data-tab="asset" data-ic="자산"><span>자산</span></button>
+  <button data-tab="hall" data-ic="별"><span>기록실</span></button>
+  <button data-tab="add" data-ic="더하기"><span>입력</span></button>
+</nav>
+
+<div id="modal" hidden><div class="sheetwrap"><div id="modalBody" class="sheet"></div></div></div>
+<div id="toast" hidden></div>
+<footer id="stamp"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/core.js"></script>
+<script src="js/core-asset.js"></script>
+<script src="js/widgets.js"></script>
+<script src="js/widgets-extra.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/page-month.js"></script>
+<script src="js/page-ledger.js"></script>
+<script src="js/page-spend.js"></script>
+<script src="js/page-trend.js"></script>
+<script src="js/page-book.js"></script>
+<script src="js/page-asset.js"></script>
+<script src="js/page-hall.js"></script>
+<script src="js/page-theme.js"></script>
+<script src="js/story.js"></script>
+<script src="js/page-add.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>

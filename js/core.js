@@ -1,0 +1,213 @@
+/* ===== js/core.js ===== */
+/* core.js - 데이터 읽기와 집계.
+   여기서만 원본 시트를 안다. 화면 파일은 이 함수들만 쓴다. */
+const FILEV = window.FILEV || (window.FILEV = {});
+FILEV.core = CONFIG.APP_VERSION;
+
+const S = {
+  future: [],
+  rows: [],          // 정규화된 기록
+  meta: null,        // 분류표
+  ym: "",            // 지금 보고 있는 달
+  ready: false,
+  tab: "month",
+};
+
+/* ---------- 작은 도구 ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const el = (t, c, h) => { const n = document.createElement(t); if (c) n.className = c; if (h != null) n.innerHTML = h; return n; };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+const won = n => (Math.round(n || 0)).toLocaleString("ko-KR");
+const wonS = n => { const v = Math.round(Math.abs(n || 0)); if (v >= 100000000) return (v / 100000000).toFixed(1).replace(/\.0$/, "") + "억"; if (v >= 10000) return (v / 10000).toFixed(v >= 1000000 ? 0 : 1).replace(/\.0$/, "") + "만"; return v.toLocaleString("ko-KR"); };
+const pad2 = n => String(n).padStart(2, "0");
+const todayISO = () => { const d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); };
+const ymOf = iso => (iso || "").slice(0, 7);
+const yOf = iso => (iso || "").slice(0, 4);
+const shiftYM = (ym, k) => { let y = +ym.slice(0, 4), m = +ym.slice(5, 7) + k; y += Math.floor((m - 1) / 12); m = ((m - 1) % 12 + 12) % 12 + 1; return y + "-" + pad2(m); };
+const ymLabel = ym => ym.slice(2, 4) + "-" + ym.slice(5, 7);
+const WD = ["일", "월", "화", "수", "목", "금", "토"];
+const wdOf = iso => { const d = new Date(iso + "T00:00:00"); return isNaN(d) ? "" : WD[d.getDay()]; };
+
+function toast(msg, ms) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, ms || 2200);
+}
+
+/* ---------- 시트 읽기 ---------- */
+function normDate(v) {
+  if (!v) return "";
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if (m) return m[1] + "-" + pad2(m[2]) + "-" + pad2(m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);            // 구글시트 로케일 대비
+  if (m) return m[3] + "-" + pad2(m[1]) + "-" + pad2(m[2]);
+  const d = new Date(s);
+  if (!isNaN(d)) return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+  return "";
+}
+function numOf(v) {
+  if (typeof v === "number") return v;
+  const t = String(v == null ? "" : v).replace(/[^0-9.-]/g, "");
+  return t === "" || t === "-" ? 0 : parseFloat(t);
+}
+
+function rowsFromTable(head, body) {
+  const ix = {}; head.forEach((h, i) => { ix[String(h || "").trim()] = i; });
+  const g = (r, k) => { const i = ix[k]; return i == null ? "" : String(r[i] == null ? "" : r[i]).trim(); };
+  const out = [];
+  for (const r of body) {
+    const date = normDate(g(r, "날짜"));
+    const amt = numOf(g(r, "금액"));
+    const sub = g(r, "소분류");
+    if (!date || (!amt && !sub)) continue;
+    const rate = (() => { const t = g(r, "부담률"); if (!t) return 1; const v = numOf(t); return t.includes("%") ? v / 100 : (v > 1.5 ? v / 100 : v); })();
+    const mine = numOf(g(r, "내 몫")) || Math.round(amt * (rate || 1));
+    out.push({
+      no: numOf(g(r, "no")), 검수: g(r, "검수"), date, sub, big: g(r, "대분류"),
+      kind: g(r, "구분") || "지출", amt, share: g(r, "누구 몫") || "내 몫 전부",
+      rate: rate || 1, mine, place: g(r, "장소"), detail: g(r, "세부내역"),
+      situ: g(r, "상황"), once: g(r, "일시성"), treat: g(r, "대접"), theme: g(r, "테마"),
+      with: g(r, "동행"), pay: g(r, "결제수단"), memo: g(r, "메모"),
+      ym: ymOf(date), y: yOf(date),
+    });
+  }
+  out.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.no - b.no);
+  /* 아직 오지 않은 달은 화면에 내지 않는다. 지우지는 않고 따로 담아 둔다.
+     11월 기록을 8월에 미리 적어 두어도 8월 화면이 흔들리지 않게 하려는 것이다. */
+  const cur = ymOf(todayISO());
+  S.future = out.filter(r => r.ym > cur);
+  return out.filter(r => r.ym <= cur);
+}
+
+async function post(action, payload) {
+  if (!CONFIG.APPS_SCRIPT_URL) throw new Error("APPS_SCRIPT_URL 이 비어 있습니다");
+  const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+    method: "POST", redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(Object.assign({ action }, payload || {})),
+  });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || "서버가 거절했습니다");
+  return j;
+}
+
+async function loadAll() {
+  const j = await post("rows", {});
+  S.rows = rowsFromTable(j.head, j.body);
+  S.meta = j.meta || null;
+  S.server = j.version || "";
+  S.ready = true;
+}
+
+/* ---------- 집계 ---------- */
+const isOut = r => r.kind === "지출";
+const isIn = r => r.kind === "수입";
+const isMov = r => r.kind === "이체";
+
+function monthRows(ym) { return S.rows.filter(r => r.ym === ym); }
+function sumMine(rs, f) { return rs.reduce((a, r) => a + ((!f || f(r)) ? r.mine : 0), 0); }
+function sumAmt(rs, f) { return rs.reduce((a, r) => a + ((!f || f(r)) ? r.amt : 0), 0); }
+
+function monthStat(ym) {
+  const rs = monthRows(ym);
+  return {
+    ym, n: rs.length,
+    out: sumMine(rs, isOut), outFull: sumAmt(rs, isOut),
+    inc: sumMine(rs, isIn), mov: sumMine(rs, isMov),
+    get left() { return this.inc - this.out; },
+    get rate() { return this.inc ? (this.inc - this.out) / this.inc : 0; },
+  };
+}
+
+/** 이 달까지 실제로 기록이 있는 달들 (평균 계산용) */
+function activeMonths(year) {
+  const set = new Set(S.rows.filter(r => !year || r.y === year).map(r => r.ym));
+  return Array.from(set).sort();
+}
+function avgOutOfYear(year) {
+  const ms = activeMonths(year); if (!ms.length) return 0;
+  return ms.reduce((a, m) => a + monthStat(m).out, 0) / ms.length;
+}
+
+function byKey(rs, keyFn, valFn) {
+  const m = new Map();
+  for (const r of rs) {
+    const k = keyFn(r); if (!k) continue;
+    const o = m.get(k) || { key: k, n: 0, mine: 0, amt: 0 };
+    o.n++; o.mine += (valFn ? valFn(r) : r.mine); o.amt += r.amt; m.set(k, o);
+  }
+  return Array.from(m.values()).sort((a, b) => b.mine - a.mine);
+}
+
+function pct(now, before) {
+  if (!before) return null;
+  return (now - before) / before;
+}
+
+/* ---------- 고정 지출 감지 (메인탭 알림) ----------
+   최근 3개 달에서 같은 소분류+장소가 매달 나왔으면 정기 항목으로 본다.
+   이번 달에 아직 안 보이고, 늘 나오던 날 + 유예일이 지났으면 알린다. */
+function recurring(ym, graceDays) {
+  const grace = graceDays == null ? 3 : graceDays;
+  const prev = [shiftYM(ym, -1), shiftYM(ym, -2), shiftYM(ym, -3)];
+  const seen = new Map();
+  prev.forEach((m, i) => {
+    for (const r of monthRows(m)) {
+      if (!isOut(r) && !isMov(r)) continue;
+      const key = (r.sub || "") + "|" + (r.place || "").trim();
+      if (!key.trim() || key === "|") continue;
+      const o = seen.get(key) || { key, sub: r.sub, place: r.place, months: new Set(), days: [], amts: [], last: r, situ: "" };
+      o.months.add(m); o.days.push(+r.date.slice(8, 10)); o.amts.push(r.mine); o.last = r;
+      if (r.situ === "정기결제") o.situ = "정기결제";
+      seen.set(key, o);
+    }
+  });
+  const cur = monthRows(ym);
+  const has = new Set(cur.map(r => (r.sub || "") + "|" + (r.place || "").trim()));
+  const today = todayISO();
+  const out = [];
+  for (const o of seen.values()) {
+    if (o.months.size < 3) continue;            // 세 달 내리 나온 것만
+    if (has.has(o.key)) continue;
+    // 금액이 들쭉날쭉하면 고정 지출이 아니라 우연히 겹친 것이다
+    const mean = o.amts.reduce((a, b) => a + b, 0) / o.amts.length;
+    if (!mean) continue;
+    const sd = Math.sqrt(o.amts.reduce((a, b) => a + (b - mean) * (b - mean), 0) / o.amts.length);
+    const steady = o.situ === "정기결제" || sd / mean <= 0.45;
+    if (!steady) continue;
+    const day = Math.round(o.days.reduce((a, b) => a + b, 0) / o.days.length);
+    const due = ym + "-" + pad2(Math.min(28, day));
+    const dl = new Date(due + "T00:00:00"); dl.setDate(dl.getDate() + grace);
+    const dueGrace = dl.getFullYear() + "-" + pad2(dl.getMonth() + 1) + "-" + pad2(dl.getDate());
+    if (today < dueGrace) continue;             // 아직 기다려 볼 때
+    const avg = Math.round(o.amts.reduce((a, b) => a + b, 0) / o.amts.length);
+    out.push({ sub: o.sub, place: o.place, day, due, avg, sample: o.last });
+  }
+  return out.sort((a, b) => b.avg - a.avg);
+}
+
+/* ---------- 테마 ----------
+   업종 칸을 건드리지 않고, 이미 적어 둔 축들을 엮어서 본다. */
+const THEMES = [
+  { id: "여행", name: "여행", desc: "여행 대분류와 테마가 여행인 기록", f: r => r.big === "여행" || r.theme === "여행" },
+  { id: "부모님", name: "부모님", desc: "대접이 부모님인 기록. 용돈과 물건 선물이 함께 잡힙니다", f: r => r.treat === "부모님" },
+  { id: "용돈", name: "용돈", desc: "소분류가 용돈인 기록", f: r => r.sub === "용돈" },
+  { id: "연인", name: "연인", desc: "테마가 데이트이거나 대접이 연인, 또는 둘이 반씩 나눈 기록", f: r => r.theme === "데이트" || r.treat === "연인" || r.share === "연인과 반반" },
+  { id: "소개팅", name: "소개팅", desc: "테마를 소개팅으로 적어 둔 기록. 동행 칸에 상대 이름이 들어갑니다", f: r => r.theme === "소개팅" },
+  { id: "동생", name: "동생", desc: "동생과 반씩 나눈 살림과 동생에게 쓴 기록", f: r => r.treat === "동생" || r.share === "동생과 반반" },
+  { id: "일시성", name: "일시성", desc: "한 번으로 끝나는 큰 지출로 표시해 둔 기록", f: r => r.once === "Y" },
+];
+function themeRows(id) { const t = THEMES.find(x => x.id === id); return t ? S.rows.filter(r => isOut(r) && t.f(r)) : []; }
+
+/* ---------- 색 ---------- */
+const BIGCOLOR = {
+  "식비": "#F2A65A", "카페/간식": "#F6C177", "배달": "#E8833A", "술/유흥": "#D9744F",
+  "교통": "#7FB4F2", "여행": "#A78BFA", "공과금": "#94A3B8", "통신": "#6FA8EA", "주거": "#8492AD",
+  "의료/건강": "#57D6A9", "뷰티/미용": "#7FD6C0", "운동": "#3FBF97",
+  "편의점/마트": "#E6C97F", "온라인쇼핑": "#D8B45E", "패션/잡화": "#F27BA0",
+  "문화/여가": "#8F7AE8", "교육": "#9B8BF0", "경조/선물": "#E48BC0",
+  "금융/세금": "#8FD3E8", "이체/저축": "#7FB4F2", "생활서비스": "#9AA6BC", "반려동물": "#A3D977",
+  "수입": "#57D6A9", "기타": "#6B7280",
+};
+const colorOf = b => BIGCOLOR[b] || "#98A2B3";
