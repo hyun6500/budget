@@ -4,7 +4,7 @@
    이 파일은 GitHub Pages 에 그대로 올라가 누구나 볼 수 있기 때문입니다. */
 const CONFIG = {
   // Apps Script 웹앱 주소. [배포 > 배포 관리]의 복사 아이콘으로 가져오세요. /exec 로 끝납니다
-  APPS_SCRIPT_URL: "",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/library/d/109ihRqBCNCCwfYOZOkAyOIIIyDY08WArGkBVOJlPWcp5vTI0aH9Z-jwV/2",
 
   // 화면 파일 버전. Code.gs 를 고칠 때만 SERVER_EXPECTED 를 올립니다
   APP_VERSION: "v2.0",
