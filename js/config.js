@@ -2,14 +2,14 @@
 /* 개인 설정. 이 파일만 채우면 앱이 돕니다. */
 const CONFIG = {
   // 가계부 구글시트 ID (주소의 /d/ 와 /edit 사이 문자열)
-  SHEET_ID: "",
+  SHEET_ID: "1AWHmkn0TH_zayTLbRBmMNvNDP4KaJoZ9888JCEsBbVI",
 
   // 자산 포트폴리오 시트 ID 는 여기에 두지 않습니다.
   // 이 파일은 GitHub Pages 에 그대로 올라가 누구나 볼 수 있기 때문입니다.
   // 그 ID 는 Apps Script 의 스크립트 속성(PORTFOLIO_ID)에 넣습니다.
 
   // Apps Script 웹앱 주소. [배포 > 배포 관리]의 복사 아이콘으로 가져오세요. /exec 로 끝납니다
-  APPS_SCRIPT_URL: "",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbz3woCJblApRjF2ErlafX7Y-f2R1ltE0dlB4w6X9pNsqfp0iPihW8hY0_hRvfgMsqn4/exec",
 
   // 시트 이름
   SHEET_NAME: "입력",
