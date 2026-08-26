@@ -9,7 +9,7 @@ const CONFIG = {
   //   맞는 모양: https://script.google.com/macros/s/AKfycb.../exec
   //   틀린 모양: https://script.google.com/macros/library/d/...   (라이브러리)
   //             AKfycb...                                        (배포 ID)
-  APPS_SCRIPT_URL: "",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyqKheI47Vahw_8P_4j6IKi223UhCASM1LKtsprKacJ9JLg2uD7k0EW_H1OMw-pTO8dSg/exec",
 
   // 화면 파일 버전. Code.gs 를 고칠 때만 SERVER_EXPECTED 를 올립니다
   APP_VERSION: "v2.4.1",
